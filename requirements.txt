@@ -1,7 +1,5 @@
 flask
 pyjwt
 datetime
-uuid
 pymongo
-dnspython
 jwt
