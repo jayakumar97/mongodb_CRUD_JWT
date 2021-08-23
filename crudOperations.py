@@ -1,19 +1,16 @@
-from dns import exception
 from pymongo import MongoClient
-import pymongo
-import sys
-from flask import Flask, json,session,request,redirect,jsonify, make_response, request
+from flask import Flask, request,jsonify, make_response
 from werkzeug.security import generate_password_hash,check_password_hash
 from functools import wraps
-import uuid
 import jwt
 import datetime
-import os
+
 from bson.objectid import ObjectId
 
 app = Flask(__name__)
 #read configuration from app_config.py
 app.config.from_object('app_config')
+
 
 
 @app.route('/register', methods=['POST'])
@@ -22,7 +19,7 @@ def userRegistration():
     try:    
         data = request.get_json() 
         if data['password'] =="" or data['first_name'] =="" or data['last_name']=="" or data['email'] =="":
-                raise exception    
+                raise Exception    
         #One way encryption to staore the password
         hashedPassword = generate_password_hash(data['password'], method='sha256')
         #check user existence before registration(check by mail id)
@@ -56,7 +53,7 @@ def validateToken(func):
            #check if the user _id present in user collection or not
            user = userCollection.find_one({"_id" : ObjectId(data['id'])}) 
            if not user:
-               raise exception
+               raise Exception
         except:
             return make_response(jsonify({'message': 'token is invalid'}),400)
         return func(data['id'], *args, **kwargs)
@@ -65,31 +62,30 @@ def validateToken(func):
 @app.route('/template', methods=['POST','GET'])
 @validateToken
 def CRudTemplate(userId):
-    """ Create and Read template function"""
+    """ Create and Read(CRud) template function"""
     if request.method == 'POST':
         # condition to insert a template in collection
         try:
             data = request.get_json() 
             if data['template_name'] =="" or data['subject'] =="" or data['body']=="":
-                raise exception
+                raise Exception
             #assumption template need not to be unique. no explicit condition is given
             template={"userId":userId,"template_name":data['template_name'] ,"subject":data['subject'],"body":data['body']}
             temp=templateCollection.insert_one(template)
+            return make_response(jsonify({'message': 'Template inserted successfully'}),200)
         except:
             return make_response(jsonify({'message': 'Error while inserting new template(please check the input once again)'}),500)
-        return make_response(jsonify({'message': 'Template inserted successfully'}),200)
 
     if request.method == 'GET':
         #condition to read all the templates of a user
         try:
-            result=templateCollection.find({"userId":userId},{"_id": 0,"template_name":1, "subject": 1, "body": 1})
-            temp={}
+            result=templateCollection.find({"userId":userId},{"_id": 1,"template_name":1, "subject": 1, "body": 1})
+            temp=[]
             if templateCollection.count_documents({"userId":userId}) ==0:
                 return make_response(jsonify({'message': 'No template is found'}),404)    
             for x in result:
-                print(x)
-                temp2={'subject':x['subject'],'body':x['body']}
-                temp[x['template_name']]=temp2
+                temp2={'_id':str(x['_id']),'template_name':x['template_name'],'subject':x['subject'],'body':x['body']}
+                temp.append(temp2)
             result=jsonify(temp)
             return make_response(result,200)
         except Exception as e:
@@ -101,10 +97,10 @@ def CRudTemplate(userId):
 @app.route('/template/<template_id>', methods=['GET','PUT','DELETE'])
 @validateToken
 def cRUDTemplate(userId,template_id):
-    """Function to read, update and delete a template"""
+    """Function to read, update and delete(cRUD) a template"""
     
     if (not template_id) or (len(template_id) != 24) :
-        return make_response(jsonify({'message': 'give input template id'}),400)
+        return make_response(jsonify({'message': 'give valid template id'}),400)
     try:
         result=templateCollection.find_one({"_id":ObjectId(template_id)})
         #check if the user authorized to access the template
@@ -124,7 +120,7 @@ def cRUDTemplate(userId,template_id):
         if request.method == 'PUT':
             #condition to update a document
             data = request.get_json() 
-            #if input is not given use existing field data
+            #if input is not given use existing field data(can update any one or more field)
             if not data["template_name"]:
                 data['template_name'] = result['template_name']
             if not data["subject"]:
