@@ -6,7 +6,7 @@ JWT access token to build a user module
 
 used postman to make request
 
-registered and hosted mongodb database files over here https://account.mongodb.com/account/register
+registered and hosted mongodb database files over here https://account.mongodb.com/account/register.
 applied CRUD restriction for templates based on the user, so one user can't delete, update, or view other user's Templates
 
 1.Register
